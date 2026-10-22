@@ -42,3 +42,32 @@ test('API needs the right password, then plans a week', async () => {
     assert.ok(items[0].blockers.some((b: any) => b.id === 'placeholder'));
   });
 });
+
+test('approve screen is behind the password', async () => {
+  await withServer('secret', async (base) => {
+    assert.equal((await fetch(`${base}/`)).status, 401);
+    const page = await fetch(`${base}/`, { headers: auth('secret') });
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /Needs your OK/);
+  });
+});
+
+test('edit, approve, then take the approval back', async () => {
+  await withServer('secret', async (base) => {
+    const h = { ...auth('secret'), 'Content-Type': 'application/json' };
+    const [draft] = await (
+      await fetch(`${base}/api/plan`, { method: 'POST', headers: h, body: JSON.stringify({ topics: ['', 'Only email'] }) })
+    ).json();
+    assert.equal(draft.channel, 'Email'); // blank website topic was skipped
+
+    const blocked = await fetch(`${base}/api/items/${draft.id}/approve`, { method: 'POST', headers: h });
+    assert.equal(blocked.status, 400);
+
+    await fetch(`${base}/api/items/${draft.id}`, { method: 'PATCH', headers: h, body: JSON.stringify({ body: 'Hello friends.' }) });
+    const ok = await (await fetch(`${base}/api/items/${draft.id}/approve`, { method: 'POST', headers: h })).json();
+    assert.equal(ok.status, 'Ready');
+
+    const back = await (await fetch(`${base}/api/items/${draft.id}/unapprove`, { method: 'POST', headers: h })).json();
+    assert.equal(back.status, 'Draft');
+  });
+});

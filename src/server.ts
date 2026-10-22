@@ -6,7 +6,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { buildDrafter, buildPublishers, loadConfig } from './config.js';
 import type { Drafter } from './drafter.js';
-import { approvalBlockers, approve, planWeek, publishDue, reject } from './loop.js';
+import { approvalBlockers, approve, planWeek, publishDue, reject, unapprove } from './loop.js';
+import { PAGE } from './ui.js';
 import type { Publisher } from './publishers/types.js';
 import { JsonFileStore, type Store } from './store.js';
 
@@ -33,7 +34,9 @@ export function createApp(deps: { store: Store; drafter: Drafter; publishers: Pu
   app.use(express.json({ limit: '200kb' }));
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
-  app.use('/api', requirePassword(deps.adminPassword));
+  const locked = requirePassword(deps.adminPassword);
+  app.get('/', locked, (_req, res) => res.type('html').send(PAGE));
+  app.use('/api', locked);
 
   const wrap =
     (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response) =>
@@ -74,6 +77,7 @@ export function createApp(deps: { store: Store; drafter: Drafter; publishers: Pu
 
   app.post('/api/items/:id/approve', wrap(async (req, res) => res.json(await approve(store, req.params.id))));
   app.post('/api/items/:id/reject', wrap(async (req, res) => res.json(await reject(store, req.params.id))));
+  app.post('/api/items/:id/unapprove', wrap(async (req, res) => res.json(await unapprove(store, req.params.id))));
   app.post('/api/publish-due', wrap(async (_req, res) => res.json(await publishDue(store, publishers))));
 
   return app;

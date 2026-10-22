@@ -31,9 +31,12 @@ npm run dev            # http://localhost:10000
 npm test
 ```
 
+## Approve screen
+
+Open `/` in a browser (same password). Plan the week, edit drafts, approve or send back.
+
 ## Not built yet
 
-- The approve screen (next)
-- Notion store (items live in `data/items.json` for now)
+- Notion store (next)
 - Turning the markdown file into a page each site can show (both sites need a small change)
 - Devlog engine: weekly roundup from `hearthvale/CHANGELOG.md`

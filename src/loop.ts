@@ -33,7 +33,10 @@ export const DEFAULT_SLOTS: Slot[] = [
   { channel: 'Email', weekday: 5 },
 ];
 
-/** Plans next week's slots as Ideas and drafts each one. Topics come from you (or a later planner). */
+/**
+ * Plans next week's slots as Ideas and drafts each one. Topics come from you (or a later planner),
+ * one per slot in order. A slot with a blank topic is skipped.
+ */
 export async function planWeek(
   store: Store,
   drafter: Drafter,
@@ -44,7 +47,8 @@ export async function planWeek(
   const today = opts.today ?? todayIn();
   const made: ContentItem[] = [];
   for (const [i, slot] of slots.entries()) {
-    const topic = topics[i] ?? topics[0] ?? `${slot.channel} update`;
+    const topic = topics[i]?.trim();
+    if (!topic) continue;
     const idea = await store.create({
       name: topic,
       channel: slot.channel,
@@ -73,6 +77,11 @@ export async function approve(store: Store, id: string): Promise<ContentItem> {
   const blockers = approvalBlockers(item);
   if (blockers.length) throw new Error(`Can't approve "${item.name}": ${blockers.map((b) => b.message).join(' ')}`);
   return moveTo(store, id, 'Ready');
+}
+
+/** Takes back an approval before the day comes. */
+export async function unapprove(store: Store, id: string): Promise<ContentItem> {
+  return moveTo(store, id, 'Draft');
 }
 
 /** Sends back to Idea, so it's never published by accident. */
